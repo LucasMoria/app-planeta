@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
+import 'dart:math';
 
 void main() => runApp(PlanetApp());
 
@@ -26,6 +27,7 @@ class PlanetListScreen extends StatefulWidget {
 class _PlanetListScreenState extends State<PlanetListScreen> {
   late Database _database;
   List<Map<String, dynamic>> _planets = [];
+  Random _random = Random();
 
   @override
   void initState() {
@@ -34,13 +36,13 @@ class _PlanetListScreenState extends State<PlanetListScreen> {
   }
 
   Future<void> _initDatabase() async {
-   String path = p.join(await getDatabasesPath(), 'planets.db');
+    String path = p.join(await getDatabasesPath(), 'planets.db');
     _database = await openDatabase(
       path,
       version: 1,
       onCreate: (db, version) {
         return db.execute(
-          'CREATE TABLE planets(id INTEGER PRIMARY KEY, name TEXT, distance REAL, size REAL, nickname TEXT)'
+          'CREATE TABLE planets(id INTEGER PRIMARY KEY, name TEXT, distance REAL, size REAL, nickname TEXT)',
         );
       },
     );
@@ -185,45 +187,94 @@ class _PlanetListScreenState extends State<PlanetListScreen> {
     );
   }
 
+  // Função para gerar estrelas aleatórias
+  Widget _buildStars() {
+    return Stack(
+      children: List.generate(100, (index) {
+        double x = _random.nextDouble() * MediaQuery.of(context).size.width;
+        double y = _random.nextDouble() * MediaQuery.of(context).size.height;
+        double size = 1 + _random.nextDouble() * 3;
+        double opacity = 0.5 + _random.nextDouble() * 0.5;
+
+        return Positioned(
+          left: x,
+          top: y,
+          child: AnimatedOpacity(
+            duration: Duration(seconds: 1),
+            opacity: opacity,
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Planetas'),
       ),
-      body: ListView.builder(
-        itemCount: _planets.length,
-        itemBuilder: (context, index) {
-          final planet = _planets[index];
-          return ListTile(
-            title: Text(planet['name']),
-            subtitle: Text(planet['nickname'] ?? 'Sem apelido'),
-            onTap: () => _showPlanetDetails(planet),
-            trailing: IconButton(
-              icon: Icon(Icons.delete, color: Colors.red),
-              onPressed: () => showDialog(
-                context: context,
-                builder: (BuildContext context) => AlertDialog(
-                  title: Text('Confirmar exclusão'),
-                  content: Text('Deseja realmente excluir o planeta ${planet['name']}?'),
-                  actions: [
-                    TextButton(
-                      child: Text('Cancelar'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    ElevatedButton(
-                      child: Text('Excluir'),
-                      onPressed: () {
-                        _deletePlanet(planet['id']);
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ],
+      body: Stack(
+        children: [
+          // Fundo com a imagem
+          Positioned.fill(
+            child: Image.asset(
+              'assets/planet.png.webp', // Caminho da sua imagem
+              fit: BoxFit.cover,
+            ),
+          ),
+          // Estrelas brilhando
+          _buildStars(),
+          // Conteúdo da tela
+          Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _planets.length,
+                  itemBuilder: (context, index) {
+                    final planet = _planets[index];
+                    return ListTile(
+                      title: Text(planet['name']),
+                      subtitle: Text(planet['nickname'] ?? 'Sem apelido'),
+                      onTap: () => _showPlanetDetails(planet),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => showDialog(
+                          context: context,
+                          builder: (BuildContext context) => AlertDialog(
+                            title: Text('Confirmar exclusão'),
+                            content: Text('Deseja realmente excluir o planeta ${planet['name']}?'),
+                            actions: [
+                              TextButton(
+                                child: Text('Cancelar'),
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
+                              ElevatedButton(
+                                child: Text('Excluir'),
+                                onPressed: () {
+                                  _deletePlanet(planet['id']);
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
-            ),
-          );
-        },
+            ],
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
